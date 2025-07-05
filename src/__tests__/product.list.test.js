@@ -1,6 +1,7 @@
-import { screen } from "@testing-library/dom";
-import { afterEach, beforeAll, describe, expect, test } from "vitest";
+import { getByRole, screen, waitFor } from "@testing-library/dom";
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
 import { server } from "./mockServerHandler.js";
+import { userEvent } from "@testing-library/user-event";
 
 const goTo = (path) => {
   window.history.pushState({}, "", path);
@@ -12,6 +13,8 @@ beforeAll(async () => {
   await import("../main.js");
 });
 
+beforeEach(() => goTo("/"));
+
 afterEach(() => {
   // 각 테스트 후 상태 초기화
   document.getElementById("root").innerHTML = "";
@@ -21,7 +24,6 @@ afterEach(() => {
 
 describe("1. 상품 목록 로딩", () => {
   test("페이지 접속 시 로딩 상태가 표시되고, 데이터 로드 완료 후 상품 목록이 렌더링된다", async () => {
-    goTo("/");
     expect(screen.getByText("카테고리 로딩 중...")).toBeInTheDocument();
     expect(screen.queryByText(/총 의 상품/i)).not.toBeInTheDocument();
 
@@ -40,8 +42,6 @@ describe("1. 상품 목록 로딩", () => {
 
 describe("2. 상품 목록 조회", () => {
   test("각 상품의 기본 정보(이미지, 상품명, 가격)가 카드 형태로 표시된다", async () => {
-    goTo("/");
-
     // 첫 번째 상품이 로드될 때까지 대기
     await screen.findByText(/pvc 투명 젤리 쇼핑백/i);
 
@@ -71,8 +71,6 @@ describe("2. 상품 목록 조회", () => {
 
 describe("3. 페이지당 상품 수 선택", () => {
   test("드롭다운에서 10, 20, 50, 100개 중 선택할 수 있으며 기본값은 20개이다", async () => {
-    goTo("/");
-
     // 상품이 로드될 때까지 대기
     await screen.findByText(/총 의 상품/i);
 
@@ -92,25 +90,33 @@ describe("3. 페이지당 상품 수 선택", () => {
   });
 
   test("선택 변경 시 즉시 목록에 반영된다", async () => {
-    goTo("/");
-
     await screen.findByText(/총 의 상품/i);
 
+    expect(
+      await screen.findByRole("heading", {
+        level: 3,
+        name: "창틀벌레 모풍지판 창문 벌레 차단 틈새 창문틈 막이 방충망",
+      }),
+    ).toBeInTheDocument();
+
     const limitSelect = document.querySelector("#limit-select");
+    await userEvent.selectOptions(limitSelect, "10");
 
-    // 10개로 변경
-    limitSelect.value = "10";
-    limitSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("heading", {
+          level: 3,
+          name: "창틀벌레 모풍지판 창문 벌레 차단 틈새 창문틈 막이 방충망",
+        }),
+      ).not.toBeInTheDocument(),
+    );
 
-    // URL이 변경되었는지 확인 (limit 파라미터 포함)
-    expect(window.location.search).toMatch(/limit=10/);
+    expect(document.querySelectorAll(".product-card").length).toBe(10);
   });
 });
 
 describe("4. 상품 정렬 기능", () => {
   test("상품을 가격순/인기순으로 정렬할 수 있다", async () => {
-    goTo("/");
-
     await screen.findByText(/총 의 상품/i);
 
     // 정렬 드롭다운 찾기
@@ -125,26 +131,38 @@ describe("4. 상품 정렬 기능", () => {
     expect(optionTexts.some((text) => text.includes("낮은순") || text.includes("높은순"))).toBe(true);
   });
 
-  test("정렬 변경 시 즉시 목록에 반영된다", async () => {
-    goTo("/");
-
+  test("정렬 변경 시 목록에 반영된다", async () => {
     await screen.findByText(/총 의 상품/i);
 
-    const sortSelect = document.querySelector("#sort-select");
+    const expectProduct = (name, index = 0) => {
+      const product = [...document.querySelectorAll(".product-card")][index];
+      expect(getByRole(product, "heading", { level: 3, name })).toBeInTheDocument();
+    };
 
-    // 가격 높은순으로 변경
-    sortSelect.value = "price_desc";
-    sortSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    await userEvent.selectOptions(document.querySelector("#sort-select"), "price_desc");
+    await waitFor(() => {
+      expectProduct("ASUS ROG Flow Z13 GZ302EA-RU110W 64GB, 1TB");
+    });
 
-    // URL이 변경되었는지 확인
-    expect(window.location.search).toMatch(/sort=price_desc/);
+    await userEvent.selectOptions(document.querySelector("#sort-select"), "name_asc");
+    await waitFor(() => {
+      expectProduct("[1+1] 춘몽 섬유탈취제 섬유향수 룸스프레이 도플 패브릭 퍼퓸 217ml 블랑쉬");
+    });
+
+    await userEvent.selectOptions(document.querySelector("#sort-select"), "name_desc");
+    await waitFor(() => {
+      expectProduct(/다우니 울트라 섬유유연제 에이프릴 프레쉬/i, 1);
+    });
+
+    await userEvent.selectOptions(document.querySelector("#sort-select"), "price_asc");
+    await waitFor(() => {
+      expectProduct("샷시 풍지판 창문 바람막이 베란다 문 틈막이 창틀 벌레 차단 샤시 방충망 틈새막이", 1);
+    });
   });
 });
 
 describe("5. 무한 스크롤 페이지네이션", () => {
   test("페이지 하단 스크롤 시 추가 상품이 로드된다", async () => {
-    goTo("/");
-
     await screen.findByText(/총 의 상품/i);
 
     // 초기 상품 카드 수 확인
@@ -163,8 +181,6 @@ describe("5. 무한 스크롤 페이지네이션", () => {
 
 describe("6. 상품 검색", () => {
   test("상품명 기반 검색을 위한 텍스트 입력 필드가 있다", async () => {
-    goTo("/");
-
     await screen.findByText(/총 의 상품/i);
 
     // 검색 입력 필드 확인
@@ -173,36 +189,19 @@ describe("6. 상품 검색", () => {
     expect(searchInput.placeholder).toMatch(/검색/i);
   });
 
-  test("Enter 키로 검색이 수행된다", async () => {
-    goTo("/");
-
+  test("Enter 키로 검색이 수행할 수 있으며, 검색어와 일치하는 상품들만 목록에 표시된다", async () => {
     await screen.findByText(/총 의 상품/i);
 
     const searchInput = document.querySelector("#search-input");
 
-    // 검색어 입력
-    searchInput.value = "젤리";
-    searchInput.dispatchEvent(new Event("input", { bubbles: true }));
-
-    // Enter 키 입력
-    const enterEvent = new KeyboardEvent("keydown", {
-      key: "Enter",
-      bubbles: true,
-    });
-    searchInput.dispatchEvent(enterEvent);
-
-    expect(window.location.search).toMatch("?search=%EC%A0%A4%EB%A6%AC&current=1");
-  });
-
-  test("검색어와 일치하는 상품들만 목록에 표시된다", async () => {
-    goTo("/?search=젤리");
+    await userEvent.type(searchInput, "젤리");
+    await userEvent.keyboard("{Enter}");
 
     await screen.findByText("3개");
 
-    const productCards = document.querySelectorAll(".product-card");
-
-    // 젤리가 포함된 상품이 있어야 함
-    const hasJellyProduct = Array.from(productCards).some((card) => card.textContent.toLowerCase().includes("젤리"));
-    expect(hasJellyProduct).toBe(true);
+    const productCards = [...document.querySelectorAll(".product-card")];
+    expect(getByRole(productCards[0], "heading", { level: 3, name: /젤리/i })).toBeInTheDocument();
+    expect(getByRole(productCards[1], "heading", { level: 3, name: /젤리/i })).toBeInTheDocument();
+    expect(getByRole(productCards[2], "heading", { level: 3, name: /젤리/i })).toBeInTheDocument();
   });
 });

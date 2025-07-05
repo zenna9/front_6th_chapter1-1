@@ -1,6 +1,6 @@
 import { findByText, getByText, queryByText, screen } from "@testing-library/dom";
 import { userEvent } from "@testing-library/user-event";
-import { afterEach, beforeAll, describe, expect, test } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, test } from "vitest";
 
 const goTo = (path) => {
   window.history.pushState({}, "", path);
@@ -21,6 +21,8 @@ beforeAll(async () => {
   await import("../main.js");
 });
 
+beforeEach(() => goTo("/"));
+
 afterEach(() => {
   // 각 테스트 후 상태 초기화
   document.getElementById("root").innerHTML = "";
@@ -29,8 +31,6 @@ afterEach(() => {
 
 describe("1. 장바구니 모달", () => {
   test("장바구니 아이콘 클릭 시 모달 형태로 장바구니가 열린다", async () => {
-    goTo("/");
-
     // 상품 목록이 로드될 때까지 대기
     await screen.findByText(/총 의 상품/i);
 
@@ -46,7 +46,6 @@ describe("1. 장바구니 모달", () => {
   });
 
   test("X 버튼으로 모달을 닫을 수 있다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 장바구니 모달 열기
@@ -63,7 +62,6 @@ describe("1. 장바구니 모달", () => {
   });
 
   test("배경 클릭으로 모달을 닫을 수 있다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 장바구니 모달 열기
@@ -80,7 +78,6 @@ describe("1. 장바구니 모달", () => {
   });
 
   test("ESC 키로 모달을 닫을 수 있다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 장바구니 모달 열기
@@ -99,7 +96,6 @@ describe("1. 장바구니 모달", () => {
 
 describe.sequential("2. 장바구니 수량 조절", () => {
   test("각 장바구니 상품의 수량을 증가할 수 있다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 상품을 장바구니에 추가
@@ -124,7 +120,6 @@ describe.sequential("2. 장바구니 수량 조절", () => {
   });
 
   test("각 장바구니 상품의 수량을 감소할 수 있다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 상품을 장바구니에 추가하고 수량을 2개로 증가
@@ -152,7 +147,6 @@ describe.sequential("2. 장바구니 수량 조절", () => {
   });
 
   test("수량 변경 시 총 금액이 실시간으로 업데이트된다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 상품을 장바구니에 추가
@@ -178,7 +172,6 @@ describe.sequential("2. 장바구니 수량 조절", () => {
 
 describe.sequential("3. 장바구니 삭제", () => {
   test("각 상품에 삭제 버튼이 배치되어 있다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 상품을 장바구니에 추가
@@ -193,7 +186,6 @@ describe.sequential("3. 장바구니 삭제", () => {
   });
 
   test("삭제 버튼 클릭 시 해당 상품이 장바구니에서 제거된다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 상품을 장바구니에 추가
@@ -219,7 +211,6 @@ describe.sequential("3. 장바구니 삭제", () => {
 
 describe.sequential("4. 장바구니 선택 삭제", () => {
   test("각 상품에 선택을 위한 체크박스가 제공되고, 체크된 상품들만 삭제할 수 있다.", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
     screen.getByText("340개");
 
@@ -250,7 +241,6 @@ describe.sequential("4. 장바구니 선택 삭제", () => {
 
 describe.sequential("5. 장바구니 전체 선택", () => {
   test("모든 상품을 한 번에 선택할 수 있는 마스터 체크박스가 있다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 상품을 장바구니에 추가
@@ -266,7 +256,6 @@ describe.sequential("5. 장바구니 전체 선택", () => {
   });
 
   test("전체 선택 시 모든 상품의 체크박스가 선택된다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 두 개의 상품을 장바구니에 추가
@@ -288,7 +277,6 @@ describe.sequential("5. 장바구니 전체 선택", () => {
   });
 
   test("전체 해제 시 모든 상품의 체크박스가 해제된다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 두 개의 상품을 장바구니에 추가
@@ -314,7 +302,6 @@ describe.sequential("5. 장바구니 전체 선택", () => {
 
 describe.sequential("6. 장바구니 비우기", () => {
   test("장바구니에 있는 모든 상품을 한 번에 삭제할 수 있다", async () => {
-    goTo("/");
     await screen.findByText(/총 의 상품/i);
 
     // 상품들을 장바구니에 추가

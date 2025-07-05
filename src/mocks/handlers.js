@@ -48,10 +48,10 @@ function filterProducts(products, query) {
         filtered.sort((a, b) => parseInt(b.lprice) - parseInt(a.lprice));
         break;
       case "name_asc":
-        filtered.sort((a, b) => a.title.localeCompare(b.title));
+        filtered.sort((a, b) => a.title.localeCompare(b.title, "ko"));
         break;
       case "name_desc":
-        filtered.sort((a, b) => b.title.localeCompare(a.title));
+        filtered.sort((a, b) => b.title.localeCompare(a.title, "ko"));
         break;
       default:
         // 기본은 가격 낮은 순

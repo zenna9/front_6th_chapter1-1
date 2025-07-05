@@ -128,6 +128,11 @@ test.describe("E2E: 쇼핑몰 전체 사용자 시나리오", () => {
 
       // 검색 결과 확인
       await expect(page.locator("text=21개")).toBeVisible();
+
+      // 새로고침을 해도 유지 되는지 확인
+      await page.reload();
+      await helpers.waitForPageLoad();
+      await expect(page.locator("text=21개")).toBeVisible();
     });
 
     test("카테고리 선택 후 브레드크럼과 URL이 업데이트된다", async ({ page }) => {
@@ -153,24 +158,38 @@ test.describe("E2E: 쇼핑몰 전체 사용자 시나리오", () => {
 
       // 브레드크럼에 2차 카테고리도 표시되는지 확인
       await expect(page.locator("text=카테고리:").locator("..")).toContainText("자동차용품");
+      await expect(page.locator("text=11개")).toBeVisible();
+
+      await page.reload();
+      await helpers.waitForPageLoad();
+      await expect(page.locator("text=11개")).toBeVisible();
     });
 
     test("브레드크럼 클릭으로 상위 카테고리로 이동할 수 있다", async ({ page }) => {
       const helpers = new E2EHelpers(page);
 
       // 2차 카테고리 상태에서 시작
-      await page.goto("/?current=1&category1=생활%2F건강&category2=자동차용품");
+      await page.goto("/?current=1&category1=생활%2F건강&category2=자동차용품&search=차량용");
       await helpers.waitForPageLoad();
+      await expect(page.locator("text=9개")).toBeVisible();
 
       // 1차 카테고리 브레드크럼 클릭
       await page.click("text=생활/건강");
 
       await expect(page).toHaveURL(/category1=%EC%83%9D%ED%99%9C%2F%EA%B1%B4%EA%B0%95/);
       await expect(page).not.toHaveURL(/category2/);
-      await expect(page.locator("text=300개")).toBeVisible();
+      await expect(page.locator("text=12개")).toBeVisible();
 
       // 전체 브레드크럼 클릭
       await page.click("text=전체");
+      await expect(page.locator("text=카테고리: 전체 생활/건강 디지털/가전")).toBeVisible();
+
+      await page.reload();
+      await helpers.waitForPageLoad();
+      await expect(page.locator("text=카테고리: 전체 생활/건강 디지털/가전")).toBeVisible();
+
+      await page.fill("#search-input", "");
+      await page.press("#search-input", "Enter");
 
       await expect(page).not.toHaveURL(/category/);
       await expect(page.locator("text=340개")).toBeVisible();
@@ -185,7 +204,42 @@ test.describe("E2E: 쇼핑몰 전체 사용자 시나리오", () => {
       // 가격 높은순으로 정렬
       await page.selectOption("#sort-select", "price_desc");
 
-      await expect(page).toHaveURL(/sort=price_desc/);
+      // 첫 번째 상품 이 가격 높은 순으로 정렬되었는지 확인
+      await expect(page.locator(".product-card").first()).toMatchAriaSnapshot(`
+    - img "ASUS ROG Flow Z13 GZ302EA-RU110W 64GB, 1TB"
+    - heading "ASUS ROG Flow Z13 GZ302EA-RU110W 64GB, 1TB" [level=3]
+    - paragraph: ASUS
+    - paragraph: 3,749,000원
+    - button "장바구니 담기"
+      `);
+
+      await page.selectOption("#sort-select", "name_asc");
+      await expect(page.locator(".product-card").nth(1)).toMatchAriaSnapshot(`
+    - img "[매일출발]유로블루플러스 차량용 요소수 국내산 Adblue 호스포함"
+    - heading "[매일출발]유로블루플러스 차량용 요소수 국내산 Adblue 호스포함" [level=3]
+    - paragraph: 유로블루플러스
+    - paragraph: 8,700원
+    - button "장바구니 담기"
+    `);
+
+      await page.selectOption("#sort-select", "name_desc");
+      await expect(page.locator(".product-card").nth(1)).toMatchAriaSnapshot(`
+    - img "P&G 다우니 울트라 섬유유연제 에이프릴 프레쉬, 5.03L, 1개"
+    - heading "P&G 다우니 울트라 섬유유연제 에이프릴 프레쉬, 5.03L, 1개" [level=3]
+    - paragraph: 다우니
+    - paragraph: 16,610원
+    - button "장바구니 담기"
+      `);
+
+      await page.reload();
+      await helpers.waitForPageLoad();
+      await expect(page.locator(".product-card").nth(1)).toMatchAriaSnapshot(`
+    - img "P&G 다우니 울트라 섬유유연제 에이프릴 프레쉬, 5.03L, 1개"
+    - heading "P&G 다우니 울트라 섬유유연제 에이프릴 프레쉬, 5.03L, 1개" [level=3]
+    - paragraph: 다우니
+    - paragraph: 16,610원
+    - button "장바구니 담기"
+      `);
     });
 
     test("페이지당 상품 수 변경 시 URL이 업데이트된다", async ({ page }) => {
@@ -196,8 +250,46 @@ test.describe("E2E: 쇼핑몰 전체 사용자 시나리오", () => {
 
       // 10개로 변경
       await page.selectOption("#limit-select", "10");
-
       await expect(page).toHaveURL(/limit=10/);
+      await page.waitForFunction(() => {
+        return document.querySelectorAll(".product-card").length === 10;
+      });
+      await expect(page.locator(".product-card").last()).toMatchAriaSnapshot(
+        `- heading "탈부착 방충망 자석쫄대 방풍비닐 창문방충망 셀프시공 DIY 백색 100cm" [level=3]`,
+      );
+
+      await page.selectOption("#limit-select", "20");
+      await expect(page).toHaveURL(/limit=20/);
+      await page.waitForFunction(() => {
+        return document.querySelectorAll(".product-card").length === 20;
+      });
+      await expect(page.locator(".product-card").last()).toMatchAriaSnapshot(
+        `- heading "고양이 난간 안전망 복층 베란다 방묘창 방묘문 방충망 캣도어 일반형검정1mx1m" [level=3]`,
+      );
+
+      await page.selectOption("#limit-select", "50");
+      await expect(page).toHaveURL(/limit=50/);
+      await page.waitForFunction(() => {
+        return document.querySelectorAll(".product-card").length === 50;
+      });
+      await expect(page.locator(".product-card").last()).toMatchAriaSnapshot(
+        `- heading "강아지 고양이 아이스팩 파우치 여름 베개 젤리곰 M사이즈" [level=3]`,
+      );
+
+      await page.selectOption("#limit-select", "100");
+      await expect(page).toHaveURL(/limit=100/);
+      await page.waitForFunction(() => {
+        return document.querySelectorAll(".product-card").length === 100;
+      });
+      await expect(page.locator(".product-card").last()).toMatchAriaSnapshot(
+        `- heading "고양이 스크래쳐 숨숨집 하우스 대형 원목 스크레쳐 A type" [level=3]`,
+      );
+
+      await page.reload();
+      await helpers.waitForPageLoad();
+      await expect(page.locator(".product-card").last()).toMatchAriaSnapshot(
+        `- heading "고양이 스크래쳐 숨숨집 하우스 대형 원목 스크레쳐 A type" [level=3]`,
+      );
     });
   });
 
@@ -270,6 +362,9 @@ test.describe("E2E: 쇼핑몰 전체 사용자 시나리오", () => {
       const helpers = new E2EHelpers(page);
 
       await page.goto("/");
+      await page.evaluate(() => {
+        window.loadFlag = true;
+      });
       await helpers.waitForPageLoad();
 
       // 상품 이미지 클릭하여 상세 페이지로 이동
@@ -308,7 +403,20 @@ test.describe("E2E: 쇼핑몰 전체 사용자 시나리오", () => {
 
       // 다른 상품의 상세 페이지로 이동했는지 확인
       await expect(page).toHaveURL(/\/product\/\d+/);
-      expect(page.url()).not.toBe(currentUrl);
+      await expect(page.url()).not.toBe(currentUrl);
+      await expect(
+        page.locator('h1:text("샷시 풍지판 창문 바람막이 베란다 문 틈막이 창틀 벌레 차단 샤시 방충망 틈새막이")'),
+      ).toBeVisible();
+
+      await expect(await page.evaluate(() => window.loadFlag)).toBe(true);
+
+      await page.reload();
+
+      await expect(
+        page.locator('h1:text("샷시 풍지판 창문 바람막이 베란다 문 틈막이 창틀 벌레 차단 샤시 방충망 틈새막이")'),
+      ).toBeVisible();
+
+      await expect(await page.evaluate(() => window.loadFlag)).toBe(undefined);
     });
   });
 
@@ -487,6 +595,9 @@ test.describe("E2E: 쇼핑몰 전체 사용자 시나리오", () => {
       const helpers = new E2EHelpers(page);
 
       await page.goto("/");
+      await page.evaluate(() => {
+        window.loadFlag = true;
+      });
       await helpers.waitForPageLoad();
 
       // 상품 상세 페이지로 이동
@@ -495,16 +606,47 @@ test.describe("E2E: 쇼핑몰 전체 사용자 시나리오", () => {
         .locator('xpath=ancestor::*[contains(@class, "product-card")]');
       await productCard.locator("img").click();
 
-      await expect(page).toHaveURL(/\/product\/\d+/);
+      await expect(page).toHaveURL("/product/85067212996");
+      await expect(
+        page.locator('h1:text("PVC 투명 젤리 쇼핑백 1호 와인 답례품 구디백 비닐 손잡이 미니 간식 선물포장")'),
+      ).toBeVisible();
+      await expect(page.locator("text=관련 상품")).toBeVisible();
+      const relatedProducts = page.locator(".related-product-card");
+      await relatedProducts.first().click();
+
+      await expect(page).toHaveURL("/product/86940857379");
+      await expect(
+        page.locator('h1:text("샷시 풍지판 창문 바람막이 베란다 문 틈막이 창틀 벌레 차단 샤시 방충망 틈새막이")'),
+      ).toBeVisible();
 
       // 브라우저 뒤로가기
       await page.goBack();
-      await expect(page).toHaveURL("/");
-      await helpers.waitForPageLoad();
+      await expect(page).toHaveURL("/product/85067212996");
+      await expect(
+        page.locator('h1:text("PVC 투명 젤리 쇼핑백 1호 와인 답례품 구디백 비닐 손잡이 미니 간식 선물포장")'),
+      ).toBeVisible();
 
       // 브라우저 앞으로가기
       await page.goForward();
-      await expect(page).toHaveURL(/\/product\/\d+/);
+      await expect(page).toHaveURL("/product/86940857379");
+      await expect(
+        page.locator('h1:text("샷시 풍지판 창문 바람막이 베란다 문 틈막이 창틀 벌레 차단 샤시 방충망 틈새막이")'),
+      ).toBeVisible();
+
+      await page.goBack();
+      await page.goBack();
+      await expect(page).toHaveURL("/");
+      const firstProductCard = page.locator(".product-card").first();
+      await expect(firstProductCard.locator("img")).toBeVisible();
+
+      expect(await page.evaluate(() => window.loadFlag)).toBe(true);
+
+      await page.reload();
+      expect(
+        await page.evaluate(() => {
+          return window.loadFlag;
+        }),
+      ).toBe(undefined);
     });
 
     // 404 페이지 테스트

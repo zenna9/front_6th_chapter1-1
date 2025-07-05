@@ -20,27 +20,27 @@ afterEach(() => {
 });
 
 const 상품_상세페이지_접속 = async () => {
-  goTo("/product/85067212996");
-  await screen.findByText("상품 상세");
-  await screen.findByText("PVC 투명 젤리 쇼핑백 1호 와인 답례품 구디백 비닐 손잡이 미니 간식 선물포장");
+  const productElement = await screen.findByRole("heading", {
+    level: 3,
+    name: /pvc 투명 젤리 쇼핑백/i,
+  });
+  const productCard = productElement.closest(".product-card");
+  const productImage = productCard.querySelector("img");
+
+  expect(productImage).toBeInTheDocument();
+
+  // 상품 이미지 클릭
+  await userEvent.click(productImage);
+  await screen.findByRole("heading", {
+    level: 1,
+    name: "PVC 투명 젤리 쇼핑백 1호 와인 답례품 구디백 비닐 손잡이 미니 간식 선물포장",
+  });
 };
 
 describe("1. 상품 클릭시 상세 페이지 이동", () => {
   test("상품 목록에서 상품 이미지 클릭 시 상세 페이지로 이동되며, 상품 이미지, 설명, 가격 등의 상세 정보가 표시된다", async () => {
     goTo("/");
-
-    // 상품 목록이 로드될 때까지 대기
-    const productElement = await screen.findByText(/pvc 투명 젤리 쇼핑백/i);
-    const productCard = productElement.closest(".product-card");
-    const productImage = productCard.querySelector("img");
-
-    expect(productImage).toBeInTheDocument();
-
-    // 상품 이미지 클릭
-    await userEvent.click(productImage);
-
-    // URL이 변경되었는지 확인
-    expect(window.location.pathname).toBe("/product/85067212996");
+    await 상품_상세페이지_접속();
 
     // 상품 상세 페이지가 로드되었는지 확인
     expect(await screen.findByText("상품 상세")).toBeInTheDocument();
@@ -114,8 +114,5 @@ describe("3. 관련 상품 기능", () => {
       level: 1,
       name: "샷시 풍지판 창문 바람막이 베란다 문 틈막이 창틀 벌레 차단 샤시 방충망 틈새막이",
     });
-
-    // URL이 관련 상품의 상세 페이지로 변경되었는지 확인
-    expect(window.location.pathname).toBe(`/product/86940857379`);
   });
 });
