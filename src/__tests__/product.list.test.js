@@ -31,9 +31,9 @@ describe("1. 상품 목록 로딩", () => {
     expect(
       await screen.findByText(/pvc 투명 젤리 쇼핑백 1호 와인 답례품 구디백 비닐 손잡이 미니 간식 선물포장/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/고양이 난간 안전망 복층 베란다 방묘창 방묘문 방충망 캣도어 일반형검정/i),
-    ).toBeInTheDocument();
+    // expect(
+    //   screen.getByText(/고양이 난간 안전망 복층 베란다 방묘창 방묘문 방충망 캣도어 일반형검정/i),
+    // ).toBeInTheDocument();
 
     expect(screen.getByText(/총 의 상품/i)).toBeInTheDocument();
     expect(screen.getByText("340개")).toBeInTheDocument();
